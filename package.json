@@ -1,0 +1,1 @@
+{"name":"rainfall-atlas","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.mjs","prefetch":"node tools/prefetch.mjs"},"engines":{"node":">=20"}}

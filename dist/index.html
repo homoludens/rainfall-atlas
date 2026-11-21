@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0c1625"><meta name="description" content="Explore daily historical rainfall by region. Select a country, play one frame per day, and export your animation.">
+<title>Rainfall Atlas — daily rainfall, region by region</title>
+<link rel="stylesheet" href="style.css"><script src="assets/d3.min.js" defer></script><script type="module" src="app.mjs"></script>
+</head>
+<body>
+<header class="topbar"><a href="./" class="brand" aria-label="Rainfall Atlas home"><svg width="26" height="32" viewBox="0 0 26 32" fill="none" aria-hidden="true"><path d="M13 2C10 8 3 15 3 21a10 10 0 0 0 20 0C23 15 16 8 13 2Z" stroke="#68d3ed" stroke-width="2"/><path d="M7 21a6 6 0 0 0 6 6" stroke="#68d3ed" stroke-width="2" stroke-linecap="round"/></svg><span>Rainfall<span class="brand-light">Atlas</span></span></a><div class="top-actions"><span class="source-tag">Powered by Open-Meteo</span><a class="button subtle" href="rainfall-atlas-source.zip" download>Download code</a><button class="icon-button" id="about" title="Data and methodology" aria-label="Data and methodology">ⓘ</button></div></header>
+<div class="workspace">
+<aside class="sidebar"><div class="section-label">YOUR EXPLORATION</div><h1>A country.<br>Every rainy day.</h1><p class="intro">Historical rainfall, brought to life one day at a time.</p>
+<form id="settings">
+<label for="country">Country</label><div class="select-wrap"><select id="country" name="country"><option value="SRB">Serbia</option></select></div>
+<label for="level">Regions</label><div class="select-wrap"><select id="level"><option value="ADM1">Administrative level 1</option><option value="ADM2">Administrative level 2</option></select></div><p class="field-help">Districts, states or provinces, depending on country.</p>
+<div class="date-fields"><div><label for="start">From</label><input id="start" type="date" value="2024-05-01" min="1940-01-01" required></div><div><label for="end">To</label><input id="end" type="date" value="2024-05-31" min="1940-01-01" required></div></div>
+<label for="variable">Measure</label><div class="select-wrap"><select id="variable"><option value="rain_sum">Rainfall only</option><option value="precipitation_sum">All precipitation</option></select></div>
+<label for="samples">Regional sampling</label><div class="select-wrap"><select id="samples"><option value="1">1 point per region · fast</option><option value="3" selected>3 points per region · balanced</option><option value="5">5 points per region · detailed</option></select></div><p class="field-help">Sampled estimates from ERA5, not rain-gauge observations.</p>
+<button class="button primary" type="submit" id="load">Load rainfall</button><button class="button subtle hidden" type="button" id="cancel">Cancel loading</button>
+<div id="status" role="status" aria-live="polite">Loading the Serbia example…</div>
+</form>
+<div class="sidebar-bottom"><div class="tiny-cloud">☁</div><strong>A little context</strong><p>One frame = one day’s total in mm.<br>1 mm of rain = 1 litre per m².</p><button id="method" class="text-button">How the map is calculated</button></div>
+</aside>
+<main>
+<div class="page-title"><div><div class="eyebrow">HISTORICAL WEATHER EXPLORER</div><h2 id="title">Serbia <span>daily rainfall</span></h2><p id="subtitle">May 2024 · one frame per day · UTC</p></div><span class="pill" id="region-count">25 regions</span></div>
+<section class="map-panel" aria-label="Animated rainfall map">
+<div class="map-toolbar"><div class="map-tag"><span class="map-key"></span><span id="map-measure">Daily rainfall</span><span class="muted">/ mm</span></div><div class="map-options"><label><input type="checkbox" id="labels"> Labels</label><label><input type="checkbox" id="points"> Sample points</label><button id="save-png" class="icon-button" aria-label="Download current frame as PNG" title="Download frame as PNG">▣</button></div></div>
+<div class="canvas-wrap" id="canvas-wrap"><canvas id="map" aria-label="Daily rainfall by administrative region" role="img"></canvas><div class="tooltip hidden" id="tooltip"></div><div class="map-empty" id="map-empty"><span class="spinner"></span><strong>Preparing the map</strong><span>Fetching real historical rainfall</span></div></div>
+<div class="map-footer"><span id="frame-label">Daily total · UTC 00:00–24:00</span><span>Open-Meteo / ERA5 · geoBoundaries</span></div>
+</section>
+<section class="playback" aria-label="Animation controls"><div class="transport"><button class="button play" id="play" aria-label="Play animation" disabled>▶ <span>Play</span></button><button class="icon-button" id="prev" aria-label="Previous day" disabled>‹</button><button class="icon-button" id="next" aria-label="Next day" disabled>›</button><span id="counter" class="counter">Day — / —</span><label class="speed-label" for="speed">Speed</label><div class="select-wrap small"><select id="speed" aria-label="Playback speed"><option value="1">1 day/s</option><option value="2" selected>2 days/s</option><option value="4">4 days/s</option><option value="8">8 days/s</option></select></div><button id="export" class="button subtle export" disabled>Export video</button></div><div class="timeline" id="timeline"><div class="rain-bars" id="rain-bars" aria-hidden="true"></div><input type="range" min="0" max="30" value="0" step="1" id="scrubber" aria-label="Select day" disabled></div><div class="timeline-dates"><span id="first-date">01 May 2024</span><span class="timeline-hint">Drag to explore a day</span><span id="last-date">31 May 2024</span></div></section>
+<div class="bottom-grid"><section class="summary"><div class="section-label">THIS DAY, IN NUMBERS</div><div class="stat-grid"><div><div class="stat-label">Area-weighted estimate</div><div class="stat-value" id="average">— <small>mm</small></div><div class="stat-note" id="coverage">Across mapped regions</div></div><div><div class="stat-label">Wettest region</div><div class="stat-value" id="maximum">— <small>mm</small></div><div class="stat-note" id="wettest">—</div></div></div><p class="method-note" id="sampling-note">3 sampled points per region · ERA5 reanalysis · Daily UTC totals</p></section><section class="ranking"><div class="ranking-header"><div class="section-label">REGIONS BY RAINFALL</div><button class="text-button" id="csv" disabled>Download CSV</button></div><div id="rankings" class="rankings"><p class="muted">Region values appear when data loads.</p></div></section></div>
+<footer class="footer"><span>Weather tells a story. Explore it day by day.</span><button class="text-button" id="data-details">Data & attribution</button></footer>
+</main></div>
+<dialog id="details"><div class="dialog-header"><h2>Behind the rainfall</h2><button class="icon-button" id="close-details" aria-label="Close details">×</button></div><div id="details-body"></div></dialog>
+</body></html>
