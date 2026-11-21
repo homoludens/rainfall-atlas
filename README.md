@@ -1,6 +1,6 @@
 # Rainfall Atlas
 
-A self-contained JavaScript web app that animates historical rainfall by administrative region. **Every animation frame represents exactly one calendar day's total, in millimetres.** Serbia is selected by default. Choose another country, date range and administrative level, then load its data.
+A self-contained JavaScript web app that animates historical rainfall as 3D bars above administrative regions, with an optional 2D choropleth view. **Every animation frame represents exactly one calendar day's total, in millimetres.** Serbia is selected by default. Choose another country, date range and administrative level, then load its data.
 
 ## Run locally
 
@@ -16,11 +16,14 @@ Open http://localhost:8000 in a current browser. Use a local web server rather t
 - **Regions:** ADM1 (states/provinces/districts) or ADM2. These levels have different meanings in different countries.
 - **Dates:** up to 366 consecutive days per request, from 1940 until seven days ago.
 - **Measure:** liquid rainfall (`rain_sum`) or total precipitation including snow water equivalent (`precipitation_sum`).
+- **3D rain bars (default):** one shaded vertical column per region. Height is directly proportional to daily rainfall in millimetres: a 20 mm column is twice as tall as a 10 mm column. The domain is chosen from the largest regional value over the whole selected date range, then stays fixed across all daily frames. A visible mm/day ruler uses the same height-to-pixel conversion as the bars. Zero rainfall is a flat ring; missing data is a crossed ring, with no fabricated height.
+- **Camera:** drag to rotate/tilt, use the angle slider, scroll or pinch to zoom, or use the zoom/reset buttons. Focus the canvas and use arrow keys to rotate/tilt, `+`/`-` to zoom, or Home to reset. Orthographic projection ensures equal values have the same apparent vertical height at every map location. Column footprints are adjusted for region spacing; only height and colour encode rainfall. Click a region or column to inspect it.
+- **2D map:** switch back to the choropleth view without changing the selected day or weather data.
 - **Play / slider:** step through the days without interpolating between them. The last day stops playback; pressing Play restarts it.
 - **Speed:** how many daily map frames to display each second. It does not change the daily accumulation period.
-- **PNG:** download the current day at 1600×1200.
+- **PNG:** download the current day at 1600×1200, preserving the current 3D/2D mode, camera and label settings.
 - **CSV:** all regions and dates, including point counts, variable, model and timezone.
-- **Video:** export the daily animation as WebM (or MP4 where supported) at 1600×1200. The browser must support Canvas captureStream and MediaRecorder. Keep the tab in the foreground while exporting. Each distinct weather frame is one day; the encoder may repeat that image for its display duration.
+- **Video:** export the daily animation as WebM (or MP4 where supported) at 1600×1200. The browser must support Canvas captureStream and MediaRecorder. The current 3D/2D mode and camera are used for the entire video. Keep the tab in the foreground while exporting. Each distinct weather frame is one day; the encoder may repeat that image for its display duration.
 - **Sample points / labels:** display the requested coordinates or region names.
 
 To convert a downloaded WebM file to an MP4 with FFmpeg:
@@ -31,7 +34,7 @@ ffmpeg -i input.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart output.m
 
 ## Deploy on GitHub Pages
 
-The app is entirely static and works on both a user site and a project site such as `https://USERNAME.github.io/REPOSITORY/`. All application and data URLs are relative. API requests go directly from the visitor's browser to Open-Meteo and geoBoundaries; GitHub only serves the app files.
+The 3D rendering uses Canvas 2D with a 3D orthographic camera and shaded, depth-sorted column geometry. It adds no external runtime dependencies, WebGL requirement, or server. The app is entirely static and works on both a user site and a project site such as `https://USERNAME.github.io/REPOSITORY/`. All application and data URLs are relative. API requests go directly from the visitor's browser to Open-Meteo and geoBoundaries; GitHub only serves the app files.
 
 1. Extract the source ZIP and push the contents of its `rainfall-atlas/` directory to your repository's `main` branch, including `.github/workflows/pages.yml`.
 2. In GitHub **Settings → Pages → Build and deployment**, choose **GitHub Actions** as the source.
@@ -64,6 +67,8 @@ All countries use daily UTC boundaries. These are not local civil days in countr
 | `dist/index.html` | Interface and controls |
 | `dist/style.css` | Responsive layout |
 | `dist/app.mjs` | Canvas map, playback, data loading and exports |
+| `dist/geometry3d.mjs` | Linear height scaling, orthographic camera and 3D column geometry |
+| `dist/renderer3d.mjs` | Shaded 3D map, columns, height ruler and region picking |
 | `dist/core.mjs` | Geometry sampling, API client, daily aggregation and CSV |
 | `dist/assets/d3.min.js` | Vendored D3 7.9.2 map projections and colour scale |
 | `dist/data/` | Country index, Serbia boundaries and real example data |
@@ -89,7 +94,7 @@ The CLI shares exactly the same sampling and aggregation code as the browser. Pr
 node --test tests/*.test.mjs
 ```
 
-Checks include real Serbia district polygons, leap days, a year boundary, missing samples, mismatched dates/units, per-day aggregation, area weighting, and CSV escaping.
+Checks include real Serbia district polygons, leap days, a year boundary, missing samples, mismatched dates/units, per-day aggregation, area weighting, CSV escaping, fixed scale across days, exact height ratios, zero/missing heights, camera fitting and orthographic height consistency.
 
 ## Data attribution and terms
 
